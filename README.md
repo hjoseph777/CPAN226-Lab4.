@@ -14,7 +14,7 @@ The idea here is simple: take a server that handles clients one at a time, watch
 
 | File | What It Does |
 |---|---|
-| [`timedDelayThreadsM.c`](timedDelayThreadsM.c) | My multithreaded server (Task 2 solution) |
+| [`timedDelayThreadsM.c`](timedDelayThreadsM.c) | My multithreaded server (Task 2 solution) — [⬇ Download](https://raw.githubusercontent.com/hjoseph777/CPAN226-Lab4./main/timedDelayThreadsM.c) |
 | `timedDelayNothreads.c` | The original sequential server (Task 1 baseline) |
 | `client.c` / `clientM.c` | Test clients for Task 1 and Task 2 |
 | `implementation.md` | Deeper technical notes and implementation details |

@@ -352,26 +352,7 @@ The core lesson is clear: blocking everything on a single thread is fine for tri
 ### Screenshots in `screenshots/` folder
 
 **Task 1 screenshots:**
-- [x] `01_compiler_version.png` ✅
-- [x] `02_Server03_Client_compilation.png` ✅
-- [x] `04_directory_listing.png` ✅
-- [x] `05_wireshark_setup.png` ✅
-- [x] `06_wireshark_capture_started.png` ✅
-- [x] `08_Server09_Client_mid_execution.png` ✅
 - [x] `08_Server09_Client_mid_executionF.png` ✅ ⭐ CRITICAL
-- [x] `12_wireshark_stopped.png` ✅
-- [x] `14_http_response.png` ✅
-- [x] `16_tcp_termination.png` ✅
-- [x] `17_tcp_conversations.png` ✅
 
 **Task 2 screenshots:**
-- [x] `20_ThreadedM_compilation.png` ✅
 - [x] `21_22_ThreadedM_execution.png` ✅ ⭐ CRITICAL
-- [x] `23_ThreadedM_wireshark.png` ✅
-- [x] `24_ThreadedM_conversations.png` ✅
-
-### Other
-- [x] `implementation.md` included ✅
-- [ ] `README.md` fully completed (all placeholders filled)
-- [ ] Performance Data table filled in
-- [ ] GitHub link added

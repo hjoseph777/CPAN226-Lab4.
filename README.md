@@ -1,358 +1,229 @@
-# Lab4_Harry_Joseph_N00881767
+# Lab 4 — Multithreading Lab
 
-## Course Information
-- Course: CPAN-226 (Networking & Telecommunications)
-- Lab: 04
-- Student Name: Harry Joseph
-- Student ID: N00881767
-- Date: February 20, 2026
-
-## Lab Objective
-Explore the tangible impact of multithreading on server performance by transitioning from a sequential server (handling requests one-by-one) to a multithreaded server using the pthread library. Identify performance bottlenecks and measure how concurrency can drastically reduce total elapsed time in network scenarios.
-
-## Files Used
-- [`timedDelayThreadsM.c`](timedDelayThreadsM.c) — multithreaded server (Task 2) ← click to view code
-- `timedDelayNothreads.c` — sequential server (Task 1)
-- `client.c` — parallel test client (Task 1)
-- `clientM.c` — parallel test client (Task 2)
-- `implementation.md` — detailed implementation + technical notes
-
-## Tools / Environment
-- OS: Windows
-- Compiler: GCC 15.2.0 (Rev11, Built by MSYS2 project)
-- Terminal: MSYS2 MinGW64 bash
-- Packet Analyzer: Wireshark
+**Harry Joseph** | N00881767  
+CPAN-226 Networking & Telecommunications  
+February 20, 2026
 
 ---
 
-<br>
+## What This Lab Is About
 
-# TASK 1: Establish a Baseline (Sequential)
+The idea here is simple: take a server that handles clients one at a time, watch it struggle, then fix it with threads and see the difference. The server has a fake 5-second delay per request (simulating something slow like a database call), so when 5 clients hit it at once, the sequential version makes them wait in line — 25 seconds total. The threaded version lets them all run at the same time and finishes in about 5 seconds.
 
-> Measure the "slow" version — server handles one client at a time with a 5-second delay each.
+## Files
+
+| File | What It Does |
+|---|---|
+| [`timedDelayThreadsM.c`](timedDelayThreadsM.c) | My multithreaded server (Task 2 solution) |
+| `timedDelayNothreads.c` | The original sequential server (Task 1 baseline) |
+| `client.c` / `clientM.c` | Test clients for Task 1 and Task 2 |
+| `implementation.md` | Deeper technical notes and implementation details |
+
+## Environment
+
+- **OS:** Windows
+- **Compiler:** GCC 15.2.0 (MSYS2 MinGW64)
+- **Extras:** Wireshark for packet-level proof
 
 ---
 
-## Task 1 — Screenshots
+# Task 1 — Sequential Baseline
 
-### Setup & Compilation
+> Goal: run the original server, fire 5 clients at it, and confirm it takes ~25 seconds.
 
-**Screenshot 1 — `01_compiler_version.png` — Output of `gcc --version` command**
+### Setup
+
+I started by verifying my compiler and getting everything compiled clean:
 
 ![Compiler Version](screenshots/01_compiler_version.png)
-
----
-
-**Screenshots 2 & 3 — `02_Server03_Client_compilation.png` — Successful compilation of server (left) and client (right) side by side**
+*GCC version check*
 
 ![Server & Client Compilation](screenshots/02_Server03_Client_compilation.png)
-
----
-
-**Screenshot 4 — `04_directory_listing.png` — Directory showing `server.exe` and `client.exe`**
+*Server (left) and client (right) compiled without errors*
 
 ![Directory Listing](screenshots/04_directory_listing.png)
+*Both .exe files present and ready to go*
 
----
+### Wireshark Capture
 
-### Wireshark Setup
-
-**Screenshot 5 — `05_wireshark_setup.png` — Interface selection and capture filter `tcp port 8080`**
+Before running anything, I set up Wireshark on the loopback adapter with filter `tcp port 8080` so I could see exactly what happens at the packet level:
 
 ![Wireshark Setup](screenshots/05_wireshark_setup.png)
-
----
-
-**Screenshot 6 — `06_wireshark_capture_started.png` — Wireshark capturing with start time visible**
+*Capture filter set to `tcp port 8080`*
 
 ![Wireshark Capture Started](screenshots/06_wireshark_capture_started.png)
+*Capture running, timestamp at 0*
 
----
+### Running It
 
-### Execution
+Fired up the server in one terminal, then the client in another. You can see the server processing clients one by one — while client 1 is being handled, the other 4 just sit there waiting:
 
-**Screenshots 8 & 9 — `08_Server09_Client_mid_execution.png` — Server processing sequentially (left) and all 5 client requests connected and waiting (right)**
+![Mid-Execution](screenshots/08_Server09_Client_mid_execution.png)
+*Server processing sequentially (left), all 5 clients connected and waiting (right)*
 
-![Mid-Execution Side by Side](screenshots/08_Server09_Client_mid_execution.png)
+And here's the final result — **25.00 seconds**, exactly what you'd expect from 5 × 5s:
 
----
+![Completed Run](screenshots/08_Server09_Client_mid_executionF.png)
+*Final elapsed time: 25.00 seconds*
 
-**Screenshots 10 & 11 — `08_Server09_Client_mid_executionF.png` — Completed run: server all 5 clients handled (left) + final elapsed time (right)** ⚠️ CRITICAL
+### Wireshark Proof
 
-![Completed Run Side by Side](screenshots/08_Server09_Client_mid_executionF.png)
-
----
-
-### Wireshark Analysis
-
-**Screenshot 12 — `12_wireshark_stopped.png` — Capture stopped with end time visible**
+The packet capture tells the same story. Responses came in one at a time, roughly 5 seconds apart:
 
 ![Wireshark Stopped](screenshots/12_wireshark_stopped.png)
-
----
-
-**Screenshot 14 — `14_http_response.png` — HTTP response packet with `Hello Client!` content visible in detail pane**
+*Total capture duration: ~25.13 seconds*
 
 ![HTTP Response](screenshots/14_http_response.png)
-
----
-
-**Screenshot 16 — `16_tcp_termination.png` — FIN/ACK connection close sequence**
+*HTTP response with "Hello Client!" visible in the packet detail*
 
 ![TCP Termination](screenshots/16_tcp_termination.png)
-
----
-
-**Screenshot 17 — `17_tcp_conversations.png` — Statistics → Conversations → TCP showing all 5 connections**
+*FIN/ACK close sequences happening individually per connection*
 
 ![TCP Conversations](screenshots/17_tcp_conversations.png)
+*All 5 TCP conversations visible — each started ~5s after the previous one*
 
----
-
-## Task 1 — Wireshark Capture Evidence
-
-| Field | Value | Reference |
-|---|---|---|
-| Capture Filter | `tcp port 8080` | Screenshot 5 |
-| Display Filter | `tcp.port == 8080` | — |
-| Interface | Adapter for loopback traffic capture | Screenshot 5 |
-| Capture Start Time | 0.000000 s (Packet 1) | Screenshot 6 |
-| Capture End Time | 25.131800 s (Packet 45) | Screenshot 12 |
-
-### Wireshark Proof Provided
-
-| Status | File | Description |
-|---|---|---|
-| ✅ | `screenshots/14_http_response.png` | HTTP response with "Hello Client!" content |
-| ✅ | `screenshots/16_tcp_termination.png` | Connection close sequence (FIN/ACK) |
-| ✅ | `screenshots/17_tcp_conversations.png` | Statistics showing all 5 TCP conversations |
-
----
-
-## Task 1 — Results
+### Task 1 Results
 
 | Metric | Value |
 |---|---|
-| Number of client requests (`NUM_REQUESTS`) | 5 |
-| Artificial server delay per request | 5 seconds |
-| Expected total time (sequential) | ~25 seconds |
-| **Sequential Execution Time (measured)** | **25.00 seconds** |
+| Client requests | 5 |
+| Server delay per request | 5 seconds |
+| Expected time | ~25 seconds |
+| **Measured time** | **25.00 seconds** |
 
-> Measured time taken from `08_Server09_Client_mid_executionF.png`
-
-<br>
+No surprise here. The server is single-threaded, so 5 clients × 5 seconds = 25 seconds. Period.
 
 ---
 
-<br>
+# Task 2 — Multithreaded Fix
 
----
-
-<br>
-
-# TASK 2: Implement the Solution (Multithreaded)
-
-> Modify the server to handle connections concurrently using `pthread_create` + `pthread_detach`.
-> Expected total time: ~5 seconds (all 5 clients handled simultaneously).
-
----
-
-## Task 2 — Screenshots
+> Goal: modify the server to use `pthread_create` so all clients are handled at the same time. Expected time: ~5 seconds.
 
 ### Compilation
 
-**Screenshot T2-1 — `20_ThreadedM_compilation.png` — Successful compilation of `timedDelayThreadsM.c` (left) and `clientM.c` (right) side by side**
+Compiled `timedDelayThreadsM.c` with the `-pthread` flag alongside `clientM.c`:
 
 ![Threaded Compilation](screenshots/20_ThreadedM_compilation.png)
+*Both compiled clean — server (left), client (right)*
 
----
+### Running It
 
-### Execution
-
-**Screenshot T2-2 — `21_22_ThreadedM_execution.png` — Combined: server + client side by side showing all 5 clients connected simultaneously mid-run AND final elapsed time ~5s** ⚠️ CRITICAL
+This is where it gets good. All 5 clients connect, the server spawns a thread for each one, and they all run their 5-second sleep **simultaneously**:
 
 ![Threaded Execution](screenshots/21_22_ThreadedM_execution.png)
+*Server + client side by side — all 5 handled concurrently, total time: ~5 seconds*
 
----
+### Wireshark Proof
 
-### Wireshark Analysis
-
-**Screenshot T2-3 — `23_ThreadedM_wireshark.png` — Wireshark capture showing all 5 HTTP `200 OK` responses arriving within ~0.1 seconds of each other (~5s mark), proving concurrent handling**
+The Wireshark capture confirms the concurrency. All 5 HTTP 200 OK responses arrived within ~0.1 seconds of each other around the 5-second mark — not spread out over 25 seconds like before:
 
 ![Threaded Wireshark](screenshots/23_ThreadedM_wireshark.png)
-
----
-
-**Screenshot T2-4 — `24_ThreadedM_conversations.png` — Statistics → Conversations → TCP showing all 5 connections started within 0.07 seconds of each other, each lasting ~5 seconds simultaneously**
+*All responses clustered together at ~5s instead of spread across 25s*
 
 ![Threaded Conversations](screenshots/24_ThreadedM_conversations.png)
+*All 5 connections started within 0.07s of each other, each lasting ~5s simultaneously*
 
-> Compare to Task 1 `17_tcp_conversations.png` where connections started ~5 seconds apart — here all 5 Rel Start times are nearly 0, proving the server handled them all at once
+> Compare this to the Task 1 conversations screenshot — there the connections started ~5 seconds apart. Here they all start at basically the same time.
 
----
-
-## Task 2 — Results
+### Task 2 Results
 
 | Metric | Value |
 |---|---|
-| Number of client requests | 5 |
+| Client requests | 5 |
 | Server type | Multithreaded (`pthread_create` + `pthread_detach`) |
-| Expected total time | ~5 seconds |
-| **Multithreaded Execution Time (measured)** | **5.00 seconds** |
+| Expected time | ~5 seconds |
+| **Measured time** | **5.00 seconds** |
 
-> Measured time taken from `21_22_ThreadedM_execution.png`
-
-<br>
+That's an **80% reduction** — from 25 seconds down to 5.
 
 ---
 
-<br>
+# Analysis
 
----
+## Performance Comparison
 
-<br>
+| | Sequential | Multithreaded |
+|---|---|---|
+| Time | 25.00s | 5.00s |
+| Reduction | — | **80%** |
 
-# LAB REPORT
+**Formula:** (25.00 − 5.00) / 25.00 × 100 = 80%
 
-## 1. Performance Data
+## Why Was the Sequential Version So Slow?
 
-| Metric | Value |
-|---|---|
-| Sequential Execution Time | **25.00 seconds** |
-| Multithreaded Execution Time | **5.00 seconds** |
-| Percentage Reduction | **(25.00 − 5.00) / 25.00 × 100 = 80%** |
+The original server can only deal with one client at a time. It calls `handle_client()` directly in the main loop, and inside that function there's a `sleep(5)` that blocks everything. So client 2 can't even start getting processed until client 1's full 5-second delay is done. The client side was sending all 5 requests in parallel, but it didn't matter — the bottleneck was entirely on the server side.
 
-**Formula:** Reduction % = (Sequential Time − Threaded Time) / Sequential Time × 100
+Basically: request 1 finishes at ~5s, request 2 at ~10s, request 3 at ~15s, and so on. It's just 5 × 5 = 25 seconds of waiting in line.
 
-*Example: if threaded = 5.00s → (25.00 − 5.00) / 25.00 × 100 = **80%***
+## What I Changed in the Code
 
-<br>
+The actual code changes were pretty small but made a huge difference:
 
----
-
-<br>
-
-## 2. Analysis
-
-### 2a. Sequential Bottleneck (Task 1)
-
-The server is single-threaded so it can only deal with one client at a time. No matter how many connect, they all have to wait in line.
-
-- Inside `handle_client()` there is a 5-second sleep that freezes the entire server while it runs
-- The client launches 5 threads at once and they all connect fine, but the server queues them and handles them one by one
-- Request 1 finishes at ~5s, request 2 at ~10s, request 3 at ~15s — it is simply 5 × 5 seconds
-- Total comes to ~25 seconds even though the client side was trying to do everything in parallel
-
----
-
-### 2b. Code Changes Made for Task 2
-
-- Added `#include <pthread.h>`
-- Added `client_args_t` struct to bundle `client_socket` + `client_id` for passing to the thread
-- Changed `handle_client()` signature to `void* handle_client(void* arg)` to be pthread-compatible
-- Replaced the direct `handle_client(client_socket, client_count)` call in `main()` with:
+1. Added `#include <pthread.h>`
+2. Created a `client_args_t` struct to bundle the client socket and ID together (since `pthread_create` only takes one `void*` argument)
+3. Changed `handle_client()` from a regular function to a thread-compatible one (`void* handle_client(void* arg)`)
+4. Swapped the direct function call in `main()` for:
 
 ```c
 pthread_create(&thread, NULL, handle_client, args);
-pthread_detach(thread);  // auto-reclaim thread resources on exit
+pthread_detach(thread);  // auto-cleanup when thread finishes
 ```
 
----
+That's really it. The `handle_client()` logic itself — the sleep, the HTTP response, closing the socket — didn't change at all.
 
-### 2c. Why Did Time Improve Even Though `sleep(5)` Didn't Change?
+## Why Did Time Drop Even Though `sleep(5)` Is Still There?
 
-- In the sequential version, `sleep(5)` blocks the one and only thread — nothing else can run during that time
-- In the multithreaded version, each client connection gets its own thread, so all 5 run `sleep(5)` **at the same time**
-- Instead of waiting 5+5+5+5+5 seconds in a line, all 5 sleeps overlap — total wall-clock time drops to ~5s
-- The work per client did not change at all, but the server can now do it in parallel
+This was the key thing to understand. The `sleep(5)` didn't go anywhere — each client still waits 5 seconds. But now each client gets its **own thread**, so all 5 sleeps happen at the same time instead of back-to-back. The OS scheduler handles switching between them. Instead of 5 + 5 + 5 + 5 + 5 = 25 seconds, it's just max(5, 5, 5, 5, 5) = 5 seconds.
 
----
+The work per client is identical. The only thing that changed is that the server isn't forced to finish one before starting the next.
 
-### 2d. Wireshark Evidence Summary (Task 1)
+## Wireshark Evidence
 
-- The Conversations tab (Screenshot 17) clearly shows 5 separate TCP connections all going to port 8080
-- The HTTP responses came in one at a time, roughly 5 seconds apart from each other (Screenshot 14)
-- Each connection only got its response after the server finished the sleep for that client
-- The FIN/ACK sequences happen individually per connection (Screenshot 16), not all at once
+The Wireshark captures really drive this home:
 
----
+- **Task 1 (sequential):** the Conversations tab shows each TCP connection starting ~5 seconds after the previous one. HTTP responses came in one at a time. FIN/ACK sequences happened individually.
+- **Task 2 (threaded):** all 5 connections started within 0.07 seconds of each other. All 5 responses arrived at nearly the same time around the 5-second mark.
 
-### 2e. Expected vs Actual Timing
+That's pretty hard to argue with.
 
-| | Value |
-|---|---|
-| **Expected** | 5 clients × 5 seconds = 25.00 seconds |
-| **Actual measured** | 25.00 seconds |
-| **Difference** | ~0 — loopback network overhead is negligible |
+## What Happens at Scale?
 
----
-
-### 2f. Scaling Scenarios
-
-| Requests | Sequential Server | Multithreaded Server |
+| Requests | Sequential | Threaded |
 |---|---|---|
-| 5 | 25 seconds *(measured)* | ~5 seconds *(expected)* |
-| 10 | 10 × 5s = **50 seconds** | ~5 seconds (all concurrent) |
-| 150 | 150 × 5s = **750 seconds (~12.5 min)** | ~5–8 seconds (OS scheduling overhead starts showing) |
-| 1,000 | 1,000 × 5s = **5,000 seconds (~83 min)** | likely **crashes or degrades badly** — 1,000 threads hits OS limits, memory spikes, context-switching overhead kills performance |
+| 5 | 25s *(measured)* | ~5s *(measured)* |
+| 10 | 50s | ~5s |
+| 150 | 12.5 minutes | ~5–8s |
+| 1,000 | ~83 minutes | starts breaking down |
 
-The sequential server scales linearly in the worst possible way — every extra client adds 5 more seconds to the total wait. With 150 requests the last client waits over 12 minutes, which is completely unusable. The multithreaded version handles 10 or 150 requests just as fast as 5, but at 1,000 simultaneous threads it starts to fall apart too. That is where a thread pool or async I/O with `select()`/`epoll()` would be the right solution instead of spawning a new thread per client.
+The sequential server is brutal at scale — every new client adds a full 5 seconds. 150 clients? The last one waits over 12 minutes. Nobody's sitting around for that.
 
-<br>
-
----
-
-<br>
-
-## 3. Conclusion
-
-This lab demonstrated the real-world difference between a server that handles clients one at a time versus one that handles them concurrently. Running it yourself makes the impact of threading immediately obvious.
+The threaded version handles 10 or even 150 requests about as fast as 5, since they all run concurrently. But at 1,000 simultaneous threads, you start hitting real problems: OS thread limits (most systems cap out somewhere in the low thousands), memory overhead from each thread's stack, and context-switching costs that eat into performance. At that point, the right move is a thread pool or switching to async I/O with something like `select()` or `epoll()` — one thread monitoring many sockets at once, no thread-per-client overhead.
 
 ---
 
-### 3a. Server-Side Bottlenecks
+# Conclusion
 
-Even with 5 clients connecting at the exact same time, the sequential server queued them all up. The `sleep(5)` call simulates something slow — a database query, a file read — and you can see how badly that affects every client waiting behind the first. Total time went from what could have been 5 seconds to 25 seconds purely because of that single-threaded design choice.
+Before this lab, multithreading was mostly a concept I'd read about. Actually running both versions back-to-back and watching the numbers go from 25 seconds to 5 seconds made the impact click in a way that reading about it doesn't.
 
----
+The sequential server design is fine if you only ever have one client at a time, but the moment you have concurrent users it falls apart completely. The `sleep(5)` in this lab is just a stand-in, but in a real server that could be a database query, a file read, or an API call — anything that takes time. If your server blocks on every one of those, every other user just sits there waiting.
 
-### 3b. Concurrency Limits of a Non-Threaded Design
-
-This design tops out at one request every 5 seconds. With 20 clients, the last one waits almost 2 minutes. That is not acceptable for any real application. The server has no way to overlap work, so every additional client just increases the total wait time linearly.
+Threading fixed the problem here with a surprisingly small amount of code — a struct, a `pthread_create`, and a `pthread_detach`. But it's not a silver bullet. At some point (hundreds or thousands of connections), spawning a thread per client stops scaling too, and you need to move to something like a thread pool or event-driven I/O. Still, for a moderate number of concurrent clients, pthreads get the job done and the performance difference speaks for itself.
 
 ---
-
-### 3c. Benefits of Multithreading in I/O-Bound Network Applications
-
-**With threads (`timedDelayThreadsM.c`):** the server spawns a new thread per client connection. All 5 run `handle_client()` simultaneously, finish around the 5-second mark, and total time drops from 25s to ~5s. That is a 5× speedup from a small code change — replacing a direct function call with `pthread_create` and adding `pthread_detach` for automatic cleanup.
-
-**With async I/O:** using `select()` or `epoll()` to monitor multiple sockets at once without blocking scales even further — no thread-per-client overhead — but is more complex to implement.
-
-The core lesson is clear: blocking everything on a single thread is fine for trivial workloads but collapses quickly under concurrent users. Concurrency — whether via threads or async I/O — is essential for any serious network server.
-
-<br>
-
----
-
-<br>
 
 ## Submission Checklist
 
 ### Task 1 — Sequential Baseline
-- [x] `timedDelayNothreads.c` included ✅
-- [x] `client.c` included ✅
-- [x] Sequential time recorded: **25.00 seconds** ✅
+- [x] `timedDelayNothreads.c` + `client.c` included
+- [x] Sequential time recorded: **25.00 seconds**
 
-### Task 2 — Multithreaded Implementation
-- [x] `timedDelayThreadsM.c` included *(with authorship comment at top)* ✅
-- [x] GitHub public repository link: https://github.com/hjoseph777/CPAN226-Lab4 ✅
-- [x] Multithreaded time recorded: **5.00 seconds** ✅
-- [x] % reduction calculated: **80%** ✅
+### Task 2 — Multithreaded Solution
+- [x] `timedDelayThreadsM.c` included (authorship comment at top of file)
+- [x] GitHub repo: https://github.com/hjoseph777/CPAN226-Lab4
+- [x] Multithreaded time recorded: **5.00 seconds**
+- [x] Percentage reduction: **80%**
 
-### Screenshots in `screenshots/` folder
-
-**Task 1 screenshots:**
-- [x] `08_Server09_Client_mid_executionF.png` ✅ ⭐ CRITICAL
-
-**Task 2 screenshots:**
-- [x] `21_22_ThreadedM_execution.png` ✅ ⭐ CRITICAL
+### Screenshots
+- [x] `08_Server09_Client_mid_executionF.png` — Task 1 final timing
+- [x] `21_22_ThreadedM_execution.png` — Task 2 final timing
+- [x] Wireshark captures for both tasks (6 total screenshots)
